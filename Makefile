@@ -16,11 +16,17 @@ GOOS ?= $(shell go env GOOS)
 SOURCES := $(shell find . -type f  -name '*.go')
 LDFLAGS := ""
 
+# Images management
+REGISTRY_USER_NAME?=""
+REGISTRY_PASSWORD?=""
+REGISTRY_SERVER_ADDRESS?=""
+REGISTRY?="${REGISTRY_SERVER_ADDRESS}/k8s-cloudcontrollermanager"
+
 clean:
 	rm -rf huawei-cloud-controller-manager
 
 verify:
-	hack/verify.sh
+	./hack/verify.sh
 
 .PHONY: test
 test:
@@ -29,3 +35,19 @@ test:
 .PHONY: fmt
 fmt:
 	./hack/check-format.sh
+
+huawei-cloud-controller-manager: $(SOURCES)
+	CGO_ENABLED=0 GOOS=$(GOOS) go build \
+		-ldflags $(LDFLAGS) \
+		-o huawei-cloud-controller-manager \
+		./cmd/cloud-controller-manager
+
+image-huawei-cloud-controller-manager: huawei-cloud-controller-manager
+	cp huawei-cloud-controller-manager ./cluster/images/cloud-controller-manager \
+	docker build -t $(REGISTRY)/huawei-cloud-controller-manager:$(VERSION) cluster/images/cloud-controller-manager \
+	rm ./cluster/images/cloud-controller-manager/huawei-cloud-controller-manager
+
+upload-image-huawei-cloud-controller-manager:
+	@echo "push images to $(REGISTRY)"
+	docker login -u ${REGISTRY_USER_NAME} -p ${REGISTRY_PASSWORD} ${REGISTRY_SERVER_ADDRESS}
+	docker push ${REGISTRY}/huawei-cloud-controller-manager:${VERSION}
