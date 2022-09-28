@@ -121,6 +121,10 @@ func (l LBSharedService) CreateToCompleted(opts *LBCreateOpts) (*LoadBalancer, e
 		updateOpts := eips.UpdateOpts{
 			PortID: loadbalancer.VipPortID,
 		}
+		client, err = l.getVpcV1Client()
+		if err != nil {
+			return nil, err
+		}
 		r := eips.Update(client, opts.PublicIpId, updateOpts)
 		if r.Err != nil {
 			err = l.Delete(loadbalancer.ID)
@@ -415,6 +419,14 @@ func (l LBSharedService) getElbV2Client() (*golangsdk.ServiceClient, error) {
 	client, err := l.Config.ElbV2Client()
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("Failed create ELB V2 client: %s", err))
+	}
+	return client, nil
+}
+
+func (l LBSharedService) getVpcV1Client() (*golangsdk.ServiceClient, error) {
+	client, err := l.Config.VpcV1Client()
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("Failed create VPC V1 client: %s", err))
 	}
 	return client, nil
 }

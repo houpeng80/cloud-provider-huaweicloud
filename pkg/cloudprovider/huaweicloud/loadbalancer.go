@@ -710,6 +710,44 @@ func (l *LB) UpdateLoadBalancer(ctx context.Context, clusterName string, service
 // Implementations must treat the *v1.Service parameter as read-only and not modify it.
 // Parameter 'clusterName' is the name of the cluster as presented to kube-controller-manager
 func (l *LB) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, service *v1.Service) error {
+	serviceName := fmt.Sprintf("%s/%s", service.Namespace, service.Name)
+	klog.Infof("EnsureLoadBalancerDeleted(%s, %s)", clusterName, serviceName)
+
+	params, err := l.parseAnnotationParameters(service)
+	if err != nil {
+		return err
+	}
+	if params.keepEip && len(params.eipID) == 0 {
+		return fmt.Errorf("there are no available nodes for LoadBalancer service %s", serviceName)
+	}
+	loadBalancer, err := l.getLoadBalancerInstance(ctx, clusterName, service)
+	if err != nil {
+		if common.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	lbService, err := l.GetLBService(service)
+	if err != nil {
+		return err
+	}
+	// query ELB listeners list
+	listenerArr, err := lbService.ListListeners(loadBalancer.ID)
+	if err != nil {
+		return err
+	}
+	err = l.deleteListeners(loadBalancer, listenerArr, &ensureOptions{lbServices: lbService})
+	if err != nil {
+		return err
+	}
+	err = l.publicIpService.UnbindAndDeleteEip(loadBalancer.VipPortID, params.eipID, params.keepEip)
+	if err != nil {
+		return err
+	}
+	err = lbService.Delete(loadBalancer.ID)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

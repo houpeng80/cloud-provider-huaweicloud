@@ -51,3 +51,10 @@ upload-image-huawei-cloud-controller-manager:
 	@echo "push images to $(REGISTRY)"
 	docker login -u ${REGISTRY_USER_NAME} -p ${REGISTRY_PASSWORD} ${REGISTRY_SERVER_ADDRESS}
 	docker push ${REGISTRY}/huawei-cloud-controller-manager:${VERSION}
+
+ccm:
+	go build -tags netgo -o huawei-cloud-controller-manager ./cmd/cloud-controller-manager
+ccm-image:ccm
+	cp ./huawei-cloud-controller-manager ./cluster/images/cloud-controller-manager
+	docker build cluster/images/cloud-controller-manager -t chengxiangdong/huawei-cloud-controller-manager:latest
+	docker push houpeng/huawei-cloud-controller-manager:latest

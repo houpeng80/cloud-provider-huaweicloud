@@ -18,8 +18,8 @@ package services
 
 import (
 	"fmt"
-
 	"github.com/chnsz/golangsdk"
+	"github.com/chnsz/golangsdk/openstack/networking/v1/eips"
 	"github.com/chnsz/golangsdk/openstack/vpc/v1/publicips"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -60,6 +60,35 @@ func (p *PublicIpService) GetPortId(portID string) ([]publicips.PublicIP, error)
 	}
 
 	return ips, nil
+}
+
+func (p PublicIpService) UnbindAndDeleteEip(portId, publicIpId string, deleteEip bool) error {
+	client, err := p.Config.VpcV1Client()
+	if err != nil {
+		return err
+	}
+	updateOpts := eips.UpdateOpts{
+		PortID: "",
+	}
+	unBindEipRes := eips.Update(client, publicIpId, updateOpts)
+	if unBindEipRes.Err != nil {
+		return status.Errorf(codes.Unavailable,
+			"Failed to unBind EIP. Error: %s", unBindEipRes.Err)
+	}
+	if deleteEip {
+		delEipRes := eips.Delete(client, publicIpId)
+		if delEipRes.Err != nil {
+			updateOpts.PortID = portId
+			unBindEipRes = eips.Update(client, publicIpId, updateOpts)
+			if unBindEipRes.Err != nil {
+				return status.Errorf(codes.Internal, "Failed to delete EIP, and failed reBind EIP"+
+					"to ELB, please reBind it manually. Error: %s", unBindEipRes.Err)
+			}
+			return status.Errorf(codes.Unavailable,
+				"Failed to delete EIP. Error: %s", delEipRes.Err)
+		}
+	}
+	return nil
 }
 
 func (p *PublicIpService) getVpcV1Client() (*golangsdk.ServiceClient, error) {
