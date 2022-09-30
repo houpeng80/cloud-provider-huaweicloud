@@ -14,8 +14,6 @@ const (
 	DefaultInitDelay = 2 * time.Second
 	DefaultFactor    = 1.02
 	DefaultSteps     = 30
-
-	GbByteSize = 1024 * 1024 * 1024
 )
 
 func IsNotFound(err error) bool {

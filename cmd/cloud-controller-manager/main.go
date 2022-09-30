@@ -1,36 +1,15 @@
 /*
  Copyright 2022 The Kubernetes Authors.
-
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
-
      http://www.apache.org/licenses/LICENSE-2.0
-
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS,
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-/*
- Copyright 2022 The Kubernetes Authors.
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
-*/
-
-// The external controller manager is responsible for running controller loops that
-// are cloud provider dependent. It uses the API to listen to new events on resources.
 
 package main
 
@@ -38,10 +17,8 @@ import (
 	goflag "flag"
 	"fmt"
 	"math/rand"
-	"net"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -51,7 +28,6 @@ import (
 	cloudprovider "k8s.io/cloud-provider"
 	nodecontroller "k8s.io/cloud-provider/controllers/node"
 	nodelifecyclecontroller "k8s.io/cloud-provider/controllers/nodelifecycle"
-	routecontroller "k8s.io/cloud-provider/controllers/route"
 	servicecontroller "k8s.io/cloud-provider/controllers/service"
 	"k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
@@ -81,6 +57,7 @@ var (
 
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
+	version.Version = "0.0.1"
 
 	goflag.CommandLine.Parse([]string{})
 	s, err := options.NewCloudControllerManagerOptions()
@@ -89,8 +66,9 @@ func main() {
 	}
 
 	command := &cobra.Command{
-		Use:  "openstack-cloud-controller-manager",
-		Long: `The Cloud controller manager is a daemon that embeds the cloud specific control loops shipped with Kubernetes.`,
+		Use: "huawei-cloud-controller-manager",
+		Long: "The Cloud Controller Manager is a daemon that embeds the cloud specific control loops shipped with " +
+			"Kubernetes.",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// Glog requires this otherwise it complains.
 			goflag.CommandLine.Parse(nil)
@@ -146,7 +124,7 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	klog.V(1).Infof("openstack-cloud-controller-manager version: %s", version.Version)
+	klog.V(1).Infof("huawei-cloud-controller-manager version: %s", version.Version)
 
 	s.KubeCloudShared.CloudProvider.Name = huaweicloud.ProviderName
 	if err := command.Execute(); err != nil {
@@ -235,40 +213,6 @@ func startServiceController(ctx *cloudcontrollerconfig.CompletedConfig, cloud cl
 	}
 
 	go serviceController.Run(stopCh, int(ctx.ComponentConfig.ServiceController.ConcurrentServiceSyncs))
-
-	return nil, true, nil
-}
-
-func startRouteController(ctx *cloudcontrollerconfig.CompletedConfig, cloud cloudprovider.Interface, stopCh <-chan struct{}) (http.Handler, bool, error) {
-	if !ctx.ComponentConfig.KubeCloudShared.AllocateNodeCIDRs || !ctx.ComponentConfig.KubeCloudShared.ConfigureCloudRoutes {
-		klog.Infof("Will not configure cloud provider routes for allocate-node-cidrs: %v, configure-cloud-routes: %v.", ctx.ComponentConfig.KubeCloudShared.AllocateNodeCIDRs, ctx.ComponentConfig.KubeCloudShared.ConfigureCloudRoutes)
-		return nil, false, nil
-	}
-
-	// If CIDRs should be allocated for pods and set on the CloudProvider, then start the route controller
-	routes, ok := cloud.Routes()
-	if !ok {
-		klog.Warning("configure-cloud-routes is set, but cloud provider does not support routes. Will not configure cloud provider routes.")
-		return nil, false, nil
-	}
-	var clusterCIDRs []*net.IPNet
-	if len(strings.TrimSpace(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR)) != 0 {
-		_, clusterCIDR, err := net.ParseCIDR(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR)
-		if err != nil {
-			klog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v", ctx.ComponentConfig.KubeCloudShared.ClusterCIDR, err)
-		}
-		clusterCIDRs = append(clusterCIDRs, clusterCIDR)
-
-	}
-
-	routeController := routecontroller.New(
-		routes,
-		ctx.ClientBuilder.ClientOrDie("route-controller"),
-		ctx.SharedInformers.Core().V1().Nodes(),
-		ctx.ComponentConfig.KubeCloudShared.ClusterName,
-		clusterCIDRs,
-	)
-	go routeController.Run(stopCh, ctx.ComponentConfig.KubeCloudShared.RouteReconciliationPeriod.Duration)
 
 	return nil, true, nil
 }

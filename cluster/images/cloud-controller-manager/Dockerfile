@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM alpine:3.7
-
-RUN apk add --no-cache ca-certificates
+FROM centos:7.6.1810
+RUN yum install -y ca-certificates
 
 ADD huawei-cloud-controller-manager /bin/
 
