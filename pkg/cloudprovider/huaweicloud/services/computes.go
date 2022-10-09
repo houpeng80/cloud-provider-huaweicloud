@@ -91,7 +91,7 @@ func (s *ComputeService) GetByName(name string) (*cloudservers.CloudServer, erro
 }
 
 func (s *ComputeService) ListInterfaces(instanceID string) ([]attachinterfaces.Interface, error) {
-	client, err := s.getEcsV1Client()
+	client, err := s.getEcsV21Client()
 	if err != nil {
 		return nil, err
 	}

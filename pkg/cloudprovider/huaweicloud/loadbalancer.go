@@ -651,19 +651,16 @@ func getNodeSubnetID(hc *HuaweiCloud, node corev1.Node) (string, error) {
 		return "", err
 	}
 
-	klog.V(1).Infof("node ObjectMeta name info: %+v", node.ObjectMeta.Name)
-	klog.V(1).Infof("node name info: %+v", node.Name)
 	instance, err := hc.computeService.GetByName(node.ObjectMeta.Name)
 	if err != nil {
 		return "", err
 	}
-	klog.V(1).Infof("instance info: %+v", instance)
 
 	interfaces, err := hc.computeService.ListInterfaces(instance.ID)
 	if err != nil {
 		return "", err
 	}
-
+	klog.V(1).Infof("interfaces info: %+v", interfaces)
 	for _, intfs := range interfaces {
 		for _, fixedIP := range intfs.FixedIPs {
 			if fixedIP.IPAddress == ipAddress {
