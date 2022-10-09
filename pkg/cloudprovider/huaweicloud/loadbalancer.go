@@ -38,6 +38,7 @@ const (
 	ServiceAnnotationELBClass          = "kubernetes.io/elb.class"
 	ServiceAnnotationLBConnectionLimit = "kubernetes.io/connection-limit"
 	ServiceAnnotationLBEIPID           = "kubernetes.io/eip-id"
+	ServiceAnnotationLBELBID           = "kubernetes.io/elb-id"
 	ServiceAnnotationLBKeepEIP         = "kubernetes.io/keep-eip"
 	ServiceAnnotationLBNetworkID       = "kubernetes.io/network-id"
 	ServiceAnnotationLBSubnetID        = "kubernetes.io/subnet-id"
@@ -130,10 +131,11 @@ func (l *LB) getLoadBalancerInstance(ctx context.Context, clusterName string, se
 		return nil, err
 	}
 
-	name := l.GetLoadBalancerName(ctx, clusterName, service)
-	bytes, _ := json.Marshal(l)
-	klog.V(1).Infof("==================================================lb info: %s", string(bytes))
-	loadbalancer, err := lbServices.GetByName(name)
+	//name := l.GetLoadBalancerName(ctx, clusterName, service)
+	elbId := getStringFromSvsAnnotation(service, ServiceAnnotationLBELBID, "")
+	loadbalancer, err := lbServices.Get(elbId)
+	bytes, _ := json.Marshal(loadbalancer)
+	klog.V(1).Infof("==================================================loadbalancer info: %s", bytes)
 	if err != nil && common.IsNotFound(err) {
 		defaultName := cloudprovider.DefaultLoadBalancerName(service)
 		loadbalancer, err = lbServices.GetByName(defaultName)
@@ -262,7 +264,6 @@ func (l *LB) getOrCreateLoadbalancer(ensureOpts *ensureOptions) (*services.LoadB
 	service := ensureOpts.service
 	params := ensureOpts.parameters
 	lbServices := ensureOpts.lbServices
-	klog.V(1).Infof("================================================== ensureOpts info: %s", ensureOpts)
 	loadbalancer, err := l.getLoadBalancerInstance(ensureOpts.context, clusterName, service)
 	//klog.V(1).Infof("interfaces info: %+v", interfaces)
 	if err != nil && common.IsNotFound(nil) {
