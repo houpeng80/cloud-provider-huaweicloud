@@ -19,15 +19,13 @@ package huaweicloud
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
-
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	cloudprovider "k8s.io/cloud-provider"
 	"k8s.io/klog/v2"
+	"strconv"
 
 	"sigs.k8s.io/cloud-provider-huaweicloud/pkg/cloudprovider/huaweicloud/services"
 	"sigs.k8s.io/cloud-provider-huaweicloud/pkg/common"
@@ -653,13 +651,15 @@ func getNodeSubnetID(hc *HuaweiCloud, node corev1.Node) (string, error) {
 		return "", err
 	}
 
-	instanceID := node.Spec.ProviderID
-	if ind := strings.LastIndex(instanceID, "/"); ind >= 0 {
-		instanceID = instanceID[(ind + 1):]
+	klog.V(1).Infof("node ObjectMeta name info: %+v", node.ObjectMeta.Name)
+	klog.V(1).Infof("node name info: %+v", node.Name)
+	instance, err := hc.computeService.GetByName(node.ObjectMeta.Name)
+	if err != nil {
+		return "", err
 	}
-	klog.V(1).Infof("node info: %+v", node)
+	klog.V(1).Infof("instance info: %+v", instance)
 
-	interfaces, err := hc.computeService.ListInterfaces(instanceID)
+	interfaces, err := hc.computeService.ListInterfaces(instance.ID)
 	if err != nil {
 		return "", err
 	}

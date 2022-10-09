@@ -91,7 +91,7 @@ func (s *ComputeService) GetByName(name string) (*cloudservers.CloudServer, erro
 }
 
 func (s *ComputeService) ListInterfaces(instanceID string) ([]attachinterfaces.Interface, error) {
-	client, err := s.getBmsV21Client()
+	client, err := s.getEcsV1Client()
 	if err != nil {
 		return nil, err
 	}
@@ -259,14 +259,6 @@ func (s *ComputeService) getEcsV21Client() (*golangsdk.ServiceClient, error) {
 	client, err := s.Config.EcsV21Client()
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("Failed create ECS V1 client: %s", err))
-	}
-	return client, nil
-}
-
-func (s *ComputeService) getBmsV21Client() (*golangsdk.ServiceClient, error) {
-	client, err := s.Config.BmsV21Client()
-	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("Failed create BMS V2.1 client: %s", err))
 	}
 	return client, nil
 }
