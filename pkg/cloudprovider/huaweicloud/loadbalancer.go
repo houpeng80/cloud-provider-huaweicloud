@@ -38,7 +38,7 @@ const (
 	ServiceAnnotationELBClass          = "kubernetes.io/elb.class"
 	ServiceAnnotationLBConnectionLimit = "kubernetes.io/connection-limit"
 	ServiceAnnotationLBEIPID           = "kubernetes.io/eip-id"
-	ServiceAnnotationLBELBID           = "kubernetes.io/elb-id"
+	ServiceAnnotationLBELBID           = "kubernetes.io/elb.id"
 	ServiceAnnotationLBKeepEIP         = "kubernetes.io/keep-eip"
 	ServiceAnnotationLBNetworkID       = "kubernetes.io/network-id"
 	ServiceAnnotationLBSubnetID        = "kubernetes.io/subnet-id"
