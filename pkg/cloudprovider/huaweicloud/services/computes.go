@@ -97,6 +97,9 @@ func (s *ComputeService) ListInterfaces(instanceID string) ([]attachinterfaces.I
 	}
 
 	page, err := attachinterfaces.List(client, instanceID).AllPages()
+	if err != nil {
+		return nil, err
+	}
 	interfaces, err := attachinterfaces.ExtractInterfaces(page)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error querying a list of server interfaces: %s", err)
