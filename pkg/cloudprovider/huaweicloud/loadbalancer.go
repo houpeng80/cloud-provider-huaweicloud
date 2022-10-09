@@ -657,6 +657,7 @@ func getNodeSubnetID(hc *HuaweiCloud, node corev1.Node) (string, error) {
 	if ind := strings.LastIndex(instanceID, "/"); ind >= 0 {
 		instanceID = instanceID[(ind + 1):]
 	}
+	klog.V(1).Infof("node instanceID: %s", instanceID)
 
 	interfaces, err := hc.computeService.ListInterfaces(instanceID)
 	if err != nil {
