@@ -18,6 +18,7 @@ package huaweicloud
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -130,8 +131,8 @@ func (l *LB) getLoadBalancerInstance(ctx context.Context, clusterName string, se
 	}
 
 	name := l.GetLoadBalancerName(ctx, clusterName, service)
-	klog.V(1).Infof("==================================================lb info: %+v", l)
-	klog.V(1).Infof("==================================================service info: %+v", service)
+	bytes, _ := json.Marshal(l)
+	klog.V(1).Infof("==================================================lb info: %s", string(bytes))
 	loadbalancer, err := lbServices.GetByName(name)
 	if err != nil && common.IsNotFound(err) {
 		defaultName := cloudprovider.DefaultLoadBalancerName(service)
