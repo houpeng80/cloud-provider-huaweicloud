@@ -130,6 +130,8 @@ func (l *LB) getLoadBalancerInstance(ctx context.Context, clusterName string, se
 	}
 
 	name := l.GetLoadBalancerName(ctx, clusterName, service)
+	klog.V(1).Infof("clusterName info: %s", clusterName)
+	klog.V(1).Infof("service info: %+v", service)
 	loadbalancer, err := lbServices.GetByName(name)
 	if err != nil && common.IsNotFound(err) {
 		defaultName := cloudprovider.DefaultLoadBalancerName(service)
@@ -261,6 +263,7 @@ func (l *LB) getOrCreateLoadbalancer(ensureOpts *ensureOptions) (*services.LoadB
 	lbServices := ensureOpts.lbServices
 
 	loadbalancer, err := l.getLoadBalancerInstance(ensureOpts.context, clusterName, service)
+	//klog.V(1).Infof("interfaces info: %+v", interfaces)
 	if err != nil && common.IsNotFound(nil) {
 		opts := &services.LBCreateOpts{
 			Name: l.GetLoadBalancerName(ensureOpts.context, clusterName, service),
@@ -651,7 +654,7 @@ func getNodeSubnetID(hc *HuaweiCloud, node corev1.Node) (string, error) {
 		return "", err
 	}
 
-	instance, err := hc.computeService.GetByName(node.ObjectMeta.Name)
+	instance, err := hc.computeService.GetByName(node.Name)
 	if err != nil {
 		return "", err
 	}
@@ -660,7 +663,6 @@ func getNodeSubnetID(hc *HuaweiCloud, node corev1.Node) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	klog.V(1).Infof("interfaces info: %+v", interfaces)
 	for _, intfs := range interfaces {
 		for _, fixedIP := range intfs.FixedIPs {
 			if fixedIP.IPAddress == ipAddress {
