@@ -169,6 +169,10 @@ var allServiceCatalog = map[string]serviceCatalog{
 		Name:    "vpc",
 		Version: "v1",
 	},
+	"bmsV21": {
+		Name:    "bms",
+		Version: "v2.1",
+	},
 }
 
 func newServiceClient(c *Config, catalogName, region string) (*golangsdk.ServiceClient, error) {
@@ -278,4 +282,8 @@ func (c *Config) ElbV2Client() (*golangsdk.ServiceClient, error) {
 
 func (c *Config) VpcV1Client() (*golangsdk.ServiceClient, error) {
 	return newServiceClient(c, "vpcV1", c.Global.Region)
+}
+
+func (c *Config) BmsV21Client() (*golangsdk.ServiceClient, error) {
+	return newServiceClient(c, "bmsV21", c.Global.Region)
 }
