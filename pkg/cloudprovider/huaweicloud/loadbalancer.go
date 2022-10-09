@@ -130,8 +130,9 @@ func (l *LB) getLoadBalancerInstance(ctx context.Context, clusterName string, se
 	}
 
 	name := l.GetLoadBalancerName(ctx, clusterName, service)
-	klog.V(1).Infof("clusterName info: %s", clusterName)
-	klog.V(1).Infof("service info: %+v", service)
+	klog.V(1).Infof("================================================== clusterName info: %s", clusterName)
+	klog.V(1).Infof("==================================================service info: %+v", service.Namespace)
+	klog.V(1).Infof("==================================================service info: %+v", service.Name)
 	loadbalancer, err := lbServices.GetByName(name)
 	if err != nil && common.IsNotFound(err) {
 		defaultName := cloudprovider.DefaultLoadBalancerName(service)
@@ -261,7 +262,7 @@ func (l *LB) getOrCreateLoadbalancer(ensureOpts *ensureOptions) (*services.LoadB
 	service := ensureOpts.service
 	params := ensureOpts.parameters
 	lbServices := ensureOpts.lbServices
-
+	klog.V(1).Infof("================================================== ensureOpts info: %s", ensureOpts)
 	loadbalancer, err := l.getLoadBalancerInstance(ensureOpts.context, clusterName, service)
 	//klog.V(1).Infof("interfaces info: %+v", interfaces)
 	if err != nil && common.IsNotFound(nil) {
