@@ -545,7 +545,7 @@ func (l LBSharedService) buildPools(arr []pools.Pool) []Pool {
 	if len(arr) == 0 {
 		return nil
 	}
-	rst := make([]Pool, 0, len(arr))
+	rst := make([]Pool, len(arr), len(arr))
 	for pos, item := range arr {
 		rst[pos] = *(l.buildPool(&item))
 	}
