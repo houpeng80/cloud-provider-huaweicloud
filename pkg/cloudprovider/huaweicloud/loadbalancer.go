@@ -18,7 +18,6 @@ package huaweicloud
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -134,8 +133,6 @@ func (l *LB) getLoadBalancerInstance(ctx context.Context, clusterName string, se
 	//name := l.GetLoadBalancerName(ctx, clusterName, service)
 	elbId := getStringFromSvsAnnotation(service, ServiceAnnotationLBELBID, "")
 	loadbalancer, err := lbServices.Get(elbId)
-	bytes, _ := json.Marshal(loadbalancer)
-	klog.V(1).Infof("==================================================loadbalancer info: %s", bytes)
 	if err != nil && common.IsNotFound(err) {
 		defaultName := cloudprovider.DefaultLoadBalancerName(service)
 		loadbalancer, err = lbServices.GetByName(defaultName)
@@ -253,7 +250,7 @@ func (l *LB) EnsureLoadBalancer(ctx context.Context, clusterName string, service
 		}
 		ingressIp = eip.PublicIpAddress
 	}
-
+	klog.V(1).Infof("EnsureLoadBalancer success: %+v", ingressIp)
 	return &corev1.LoadBalancerStatus{
 		Ingress: []corev1.LoadBalancerIngress{{IP: ingressIp}},
 	}, nil
@@ -265,7 +262,6 @@ func (l *LB) getOrCreateLoadbalancer(ensureOpts *ensureOptions) (*services.LoadB
 	params := ensureOpts.parameters
 	lbServices := ensureOpts.lbServices
 	loadbalancer, err := l.getLoadBalancerInstance(ensureOpts.context, clusterName, service)
-	//klog.V(1).Infof("interfaces info: %+v", interfaces)
 	if err != nil && common.IsNotFound(nil) {
 		opts := &services.LBCreateOpts{
 			Name: l.GetLoadBalancerName(ensureOpts.context, clusterName, service),
