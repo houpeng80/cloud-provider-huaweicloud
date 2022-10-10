@@ -490,39 +490,37 @@ func (l *LB) deleteListeners(loadbalancer *services.LoadBalancer, arr []services
 	mErr := &multierror.Error{}
 	for _, lis := range arr {
 		pool, err := lbServices.GetPool(loadbalancer.ID, lis.ID)
-		if err != nil {
-			if !common.IsNotFound(err) {
-				mErr = multierror.Append(mErr, err)
-			}
-			continue
-		}
-		// delete all members of pool
-		if err = lbServices.DeleteAllPoolMembers(pool.ID); err != nil {
+		if err != nil && !common.IsNotFound(err) {
 			mErr = multierror.Append(mErr, err)
 			continue
 		}
-		// delete the pool monitor if exists
-		if err = lbServices.DeleteMonitor(pool.MonitorID); err != nil && !common.IsNotFound(err) {
-			mErr = multierror.Append(mErr, err)
-			continue
-		}
-		// delete ELB listener pool
-		if err = lbServices.DeletePool(pool.ID); err != nil && !common.IsNotFound(err) {
-			mErr = multierror.Append(mErr, err)
-			continue
+		if err == nil {
+			l.deletePool(lbServices, pool, mErr)
 		}
 		// delete ELB listener
 		if err = lbServices.DeleteListener(lis.ID); err != nil && !common.IsNotFound(err) {
 			mErr = multierror.Append(mErr, fmt.Errorf("failed to delete ELB listener %s : %s ", lis.ID, err))
-			continue
 		}
 	}
-
 	if mErr.ErrorOrNil() != nil {
 		return fmt.Errorf("failed to delete listeners: %s", mErr)
 	}
-
 	return nil
+}
+
+func (l *LB) deletePool(lbServices services.LBService, pool *services.Pool, mErr *multierror.Error) {
+	// delete all members of pool
+	if err := lbServices.DeleteAllPoolMembers(pool.ID); err != nil {
+		mErr = multierror.Append(mErr, err)
+	}
+	// delete the pool monitor if exists
+	if err := lbServices.DeleteMonitor(pool.MonitorID); err != nil && !common.IsNotFound(err) {
+		mErr = multierror.Append(mErr, err)
+	}
+	// delete ELB listener pool
+	if err := lbServices.DeletePool(pool.ID); err != nil && !common.IsNotFound(err) {
+		mErr = multierror.Append(mErr, err)
+	}
 }
 
 func (l *LB) addOrUpdateListener(loadbalancer *services.LoadBalancer,
