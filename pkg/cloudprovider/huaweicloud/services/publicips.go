@@ -63,6 +63,9 @@ func (p *PublicIpService) GetPortId(portID string) ([]publicips.PublicIP, error)
 }
 
 func (p PublicIpService) UnbindAndDeleteEip(portId, publicIpId string, deleteEip bool) error {
+	if len(publicIpId) == 0 {
+		return nil
+	}
 	client, err := p.Config.VpcV1Client()
 	if err != nil {
 		return err
