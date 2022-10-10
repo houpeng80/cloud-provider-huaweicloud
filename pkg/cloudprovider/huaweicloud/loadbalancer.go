@@ -250,7 +250,6 @@ func (l *LB) EnsureLoadBalancer(ctx context.Context, clusterName string, service
 		}
 		ingressIp = eip.PublicIpAddress
 	}
-	klog.V(1).Infof("EnsureLoadBalancer success: %+v", ingressIp)
 	return &corev1.LoadBalancerStatus{
 		Ingress: []corev1.LoadBalancerIngress{{IP: ingressIp}},
 	}, nil
@@ -708,6 +707,7 @@ func (l *LB) UpdateLoadBalancer(ctx context.Context, clusterName string, service
 // Implementations must treat the *v1.Service parameter as read-only and not modify it.
 // Parameter 'clusterName' is the name of the cluster as presented to kube-controller-manager
 func (l *LB) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, service *v1.Service) error {
+	klog.V(1).Infof("==========================================EnsureLoadBalancerDeleted start: %+v", service)
 	serviceName := fmt.Sprintf("%s/%s", service.Namespace, service.Name)
 	klog.Infof("EnsureLoadBalancerDeleted(%s, %s)", clusterName, serviceName)
 
@@ -746,6 +746,7 @@ func (l *LB) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, 
 	if err != nil {
 		return err
 	}
+	klog.V(1).Infof("==========================================EnsureLoadBalancerDeleted success")
 	return nil
 }
 
