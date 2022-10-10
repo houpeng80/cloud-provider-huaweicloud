@@ -468,7 +468,7 @@ func (l LBSharedService) buildLoadBalancerID(arr []listeners.LoadBalancerID) []s
 		return nil
 	}
 
-	lbIDs := make([]string, 0, len(arr))
+	lbIDs := make([]string, len(arr), len(arr))
 	for pos, lbID := range arr {
 		lbIDs[pos] = lbID.ID
 	}
@@ -503,7 +503,7 @@ func (l LBSharedService) buildListeners(arr []listeners.Listener) []Listener {
 	if len(arr) == 0 {
 		return nil
 	}
-	rst := make([]Listener, 0, len(arr))
+	rst := make([]Listener, len(arr), len(arr))
 	for pos, listener := range arr {
 		lis := l.buildListener(&listener)
 		rst[pos] = *lis
@@ -573,7 +573,7 @@ func (l LBSharedService) buildMembers(arr []pools.Member) []Member {
 	if len(arr) == 0 {
 		return nil
 	}
-	rst := make([]Member, 0, len(arr))
+	rst := make([]Member, len(arr), len(arr))
 	for pos, item := range arr {
 		rst[pos] = *(l.buildMember(&item))
 	}
