@@ -433,7 +433,7 @@ func (l *LB) getOrCreatePool(loadbalancer *services.LoadBalancer,
 	pool, err := ensureOpts.lbServices.GetPool(loadbalancer.ID, listener.ID)
 	klog.V(1).Info("get pool info: %+v, err info: %+v", pool, err)
 	if err != nil && common.IsNotFound(err) {
-		pool, err = l.createPool(poolName, listener, ensureOpts)
+		pool, err = l.createPool(poolName, loadbalancer, listener, ensureOpts)
 		poolBytes, _ := json.Marshal(pool)
 		klog.V(1).Info("get pool info: %s, err info: %+v", poolBytes, err)
 	} else if err != nil {
@@ -442,7 +442,8 @@ func (l *LB) getOrCreatePool(loadbalancer *services.LoadBalancer,
 	return pool, nil
 }
 
-func (l *LB) createPool(name string, listener *services.Listener, ensureOpts *ensureOptions) (*services.Pool, error) {
+func (l *LB) createPool(name string, loadbalancer *services.LoadBalancer, listener *services.Listener,
+	ensureOpts *ensureOptions) (*services.Pool, error) {
 	params := ensureOpts.parameters
 	affinity := ensureOpts.service.Spec.SessionAffinity
 	lbServices := ensureOpts.lbServices
@@ -460,8 +461,9 @@ func (l *LB) createPool(name string, listener *services.Listener, ensureOpts *en
 	}
 
 	opts := services.CreatePoolOpts{
-		Name:        name,
-		ListenerID:  listener.ID,
+		Name:           name,
+		LoadbalancerID: loadbalancer.ID,
+		//ListenerID:     listener.ID,
 		LBMethod:    services.LBMethod(params.lBMethod),
 		Protocol:    services.Protocol(listener.Protocol),
 		Persistence: persistence,
