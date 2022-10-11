@@ -432,7 +432,6 @@ func (l *LB) getOrCreatePool(loadbalancer *services.LoadBalancer,
 	listener *services.Listener, poolName string, ensureOpts *ensureOptions) (*services.Pool, error) {
 
 	pool, err := ensureOpts.lbServices.GetPool(loadbalancer.ID, listener.ID)
-	klog.V(1).Info("get pool info: %+v, err info: %+v", pool, err)
 	if err != nil && common.IsNotFound(err) {
 		pool, err = l.createPool(poolName, loadbalancer, listener, ensureOpts)
 		poolBytes, _ := json.Marshal(pool)
@@ -451,6 +450,9 @@ func (l *LB) createPool(name string, loadbalancer *services.LoadBalancer, listen
 	paramsBytes, _ := json.Marshal(params)
 	affinityBytes, _ := json.Marshal(affinity)
 	klog.V(1).Info("params info: %s, affinity info: %s", string(paramsBytes), string(affinityBytes))
+	if len(params.lBMethod) == 0 {
+		return nil, fmt.Errorf("loadbalance method is empty")
+	}
 	var persistence *services.SessionPersistence
 	switch affinity {
 	case corev1.ServiceAffinityNone:
