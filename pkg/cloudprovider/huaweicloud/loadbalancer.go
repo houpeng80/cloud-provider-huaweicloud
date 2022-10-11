@@ -171,7 +171,8 @@ func (l *LB) EnsureLoadBalancer(ctx context.Context, clusterName string, service
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("there are no available nodes for LoadBalancer service %s", serviceName)
 	}
-
+	serviceBytes, _ := json.Marshal(service)
+	klog.V(1).Info("===================service info: ", string(serviceBytes))
 	params, err := l.parseAnnotationParameters(service)
 	if err != nil {
 		return nil, err
