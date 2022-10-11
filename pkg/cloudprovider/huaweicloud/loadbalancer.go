@@ -18,6 +18,7 @@ package huaweicloud
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -433,6 +434,8 @@ func (l *LB) getOrCreatePool(loadbalancer *services.LoadBalancer,
 	klog.V(1).Info("get pool info: %+v, err info: %+v", pool, err)
 	if err != nil && common.IsNotFound(err) {
 		pool, err = l.createPool(poolName, listener, ensureOpts)
+		poolBytes, _ := json.Marshal(pool)
+		klog.V(1).Info("get pool info: %s, err info: %+v", poolBytes, err)
 	} else if err != nil {
 		return nil, err
 	}
@@ -443,7 +446,9 @@ func (l *LB) createPool(name string, listener *services.Listener, ensureOpts *en
 	params := ensureOpts.parameters
 	affinity := ensureOpts.service.Spec.SessionAffinity
 	lbServices := ensureOpts.lbServices
-	klog.V(1).Info("params info: %+v, affinity info: %+v, lbServices info: %+v", params, affinity, lbServices)
+	paramsBytes, _ := json.Marshal(params)
+	affinityBytes, _ := json.Marshal(affinity)
+	klog.V(1).Info("params info: %s, affinity info: %s", paramsBytes, affinityBytes)
 	var persistence *services.SessionPersistence
 	switch affinity {
 	case corev1.ServiceAffinityNone:
