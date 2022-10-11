@@ -19,15 +19,13 @@ package huaweicloud
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
-
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	cloudprovider "k8s.io/cloud-provider"
 	"k8s.io/klog/v2"
+	"strconv"
 
 	"sigs.k8s.io/cloud-provider-huaweicloud/pkg/cloudprovider/huaweicloud/services"
 	"sigs.k8s.io/cloud-provider-huaweicloud/pkg/common"
@@ -39,6 +37,7 @@ const (
 	ServiceAnnotationELBClass          = "kubernetes.io/elb.class"
 	ServiceAnnotationLBConnectionLimit = "kubernetes.io/connection-limit"
 	ServiceAnnotationLBEIPID           = "kubernetes.io/eip-id"
+	ServiceAnnotationLBELBID           = "kubernetes.io/elb.id"
 	ServiceAnnotationLBKeepEIP         = "kubernetes.io/keep-eip"
 	ServiceAnnotationLBNetworkID       = "kubernetes.io/network-id"
 	ServiceAnnotationLBSubnetID        = "kubernetes.io/subnet-id"
@@ -131,8 +130,8 @@ func (l *LB) getLoadBalancerInstance(ctx context.Context, clusterName string, se
 		return nil, err
 	}
 
-	name := l.GetLoadBalancerName(ctx, clusterName, service)
-	loadbalancer, err := lbServices.GetByName(name)
+	elbId := getStringFromSvsAnnotation(service, ServiceAnnotationLBELBID, "")
+	loadbalancer, err := lbServices.Get(elbId)
 	if err != nil && common.IsNotFound(err) {
 		defaultName := cloudprovider.DefaultLoadBalancerName(service)
 		loadbalancer, err = lbServices.GetByName(defaultName)
@@ -212,7 +211,7 @@ func (l *LB) EnsureLoadBalancer(ctx context.Context, clusterName string, service
 
 		// add or update listener
 		listenerName := cutString(fmt.Sprintf("listener_%d_%s", portIndex, loadbalancer.Name))
-		if err = l.addOrUpdateListener(loadbalancer, listener, listenerName, port, ensureOpts); err != nil {
+		if listener, err = l.addOrUpdateListener(loadbalancer, listener, listenerName, port, ensureOpts); err != nil {
 			return nil, err
 		}
 		listenerArr = popListener(listenerArr, listener.ID)
@@ -434,6 +433,9 @@ func (l *LB) getOrCreatePool(loadbalancer *services.LoadBalancer,
 	pool, err := ensureOpts.lbServices.GetPool(loadbalancer.ID, listener.ID)
 	if err != nil && common.IsNotFound(err) {
 		pool, err = l.createPool(poolName, listener, ensureOpts)
+		if err != nil {
+			return nil, err
+		}
 	} else if err != nil {
 		return nil, err
 	}
@@ -445,6 +447,9 @@ func (l *LB) createPool(name string, listener *services.Listener, ensureOpts *en
 	affinity := ensureOpts.service.Spec.SessionAffinity
 	lbServices := ensureOpts.lbServices
 
+	if len(params.lBMethod) == 0 {
+		return nil, fmt.Errorf("loadbalance method is empty")
+	}
 	var persistence *services.SessionPersistence
 	switch affinity {
 	case corev1.ServiceAffinityNone:
@@ -492,31 +497,16 @@ func (l *LB) deleteListeners(loadbalancer *services.LoadBalancer, arr []services
 	mErr := &multierror.Error{}
 	for _, lis := range arr {
 		pool, err := lbServices.GetPool(loadbalancer.ID, lis.ID)
-		if err != nil {
-			if !common.IsNotFound(err) {
-				mErr = multierror.Append(mErr, err)
-			}
-			continue
-		}
-		// delete all members of pool
-		if err = lbServices.DeleteAllPoolMembers(pool.ID); err != nil {
+		if err != nil && !common.IsNotFound(err) {
 			mErr = multierror.Append(mErr, err)
 			continue
 		}
-		// delete the pool monitor if exists
-		if err = lbServices.DeleteMonitor(pool.MonitorID); err != nil && !common.IsNotFound(err) {
-			mErr = multierror.Append(mErr, err)
-			continue
-		}
-		// delete ELB listener pool
-		if err = lbServices.DeletePool(pool.ID); err != nil && !common.IsNotFound(err) {
-			mErr = multierror.Append(mErr, err)
-			continue
+		if err == nil {
+			l.deletePool(lbServices, pool, mErr)
 		}
 		// delete ELB listener
 		if err = lbServices.DeleteListener(lis.ID); err != nil && !common.IsNotFound(err) {
 			mErr = multierror.Append(mErr, fmt.Errorf("failed to delete ELB listener %s : %s ", lis.ID, err))
-			continue
 		}
 	}
 
@@ -527,8 +517,23 @@ func (l *LB) deleteListeners(loadbalancer *services.LoadBalancer, arr []services
 	return nil
 }
 
-func (l *LB) addOrUpdateListener(loadbalancer *services.LoadBalancer,
-	listener *services.Listener, listenerName string, port v1.ServicePort, ensureOpts *ensureOptions) error {
+func (l *LB) deletePool(lbServices services.LBService, pool *services.Pool, mErr *multierror.Error) {
+	// delete all members of pool
+	if err := lbServices.DeleteAllPoolMembers(pool.ID); err != nil {
+		mErr = multierror.Append(mErr, err)
+	}
+	// delete the pool monitor if exists
+	if err := lbServices.DeleteMonitor(pool.MonitorID); err != nil && !common.IsNotFound(err) {
+		mErr = multierror.Append(mErr, err)
+	}
+	// delete ELB listener pool
+	if err := lbServices.DeletePool(pool.ID); err != nil && !common.IsNotFound(err) {
+		mErr = multierror.Append(mErr, err)
+	}
+}
+
+func (l *LB) addOrUpdateListener(loadbalancer *services.LoadBalancer, listener *services.Listener,
+	listenerName string, port v1.ServicePort, ensureOpts *ensureOptions) (*services.Listener, error) {
 
 	params := ensureOpts.parameters
 	lbServices := ensureOpts.lbServices
@@ -545,9 +550,10 @@ func (l *LB) addOrUpdateListener(loadbalancer *services.LoadBalancer,
 			ClientTimeout:    &params.requestTimeout,
 			MemberTimeout:    &params.responseTime,
 		}
-		_, err := lbServices.AddListener(opts)
+		addListener, err := lbServices.AddListener(opts)
+		listener = addListener
 		if err != nil {
-			return status.Errorf(codes.Internal, "Failed to create listener for loadbalancer %s: %v",
+			return nil, status.Errorf(codes.Internal, "Failed to create listener for loadbalancer %s: %v",
 				loadbalancer.ID, err)
 		}
 	} else {
@@ -574,12 +580,12 @@ func (l *LB) addOrUpdateListener(loadbalancer *services.LoadBalancer,
 
 		if hasChanged {
 			if err := lbServices.UpdateListener(listener.ID, updateOpts); err != nil {
-				return err
+				return nil, err
 			}
 		}
 		klog.Infof("Listener %s updated for loadbalancer %s", listener.ID, loadbalancer.ID)
 	}
-	return nil
+	return listener, nil
 }
 
 func filterListenerByPort(listenerArr []services.Listener, port v1.ServicePort) *services.Listener {
@@ -653,12 +659,12 @@ func getNodeSubnetID(hc *HuaweiCloud, node corev1.Node) (string, error) {
 		return "", err
 	}
 
-	instanceID := node.Spec.ProviderID
-	if ind := strings.LastIndex(instanceID, "/"); ind >= 0 {
-		instanceID = instanceID[(ind + 1):]
+	instance, err := hc.computeService.GetByName(node.Name)
+	if err != nil {
+		return "", err
 	}
 
-	interfaces, err := hc.computeService.ListInterfaces(instanceID)
+	interfaces, err := hc.computeService.ListInterfaces(instance.ID)
 	if err != nil {
 		return "", err
 	}
