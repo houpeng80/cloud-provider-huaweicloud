@@ -560,7 +560,8 @@ func (l *LB) addOrUpdateListener(loadbalancer *services.LoadBalancer,
 			ClientTimeout:    &params.requestTimeout,
 			MemberTimeout:    &params.responseTime,
 		}
-		_, err := lbServices.AddListener(opts)
+		addListener, err := lbServices.AddListener(opts)
+		listener = addListener
 		if err != nil {
 			return status.Errorf(codes.Internal, "Failed to create listener for loadbalancer %s: %v",
 				loadbalancer.ID, err)
