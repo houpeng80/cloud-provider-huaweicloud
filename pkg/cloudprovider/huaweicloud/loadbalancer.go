@@ -443,7 +443,7 @@ func (l *LB) createPool(name string, listener *services.Listener, ensureOpts *en
 	params := ensureOpts.parameters
 	affinity := ensureOpts.service.Spec.SessionAffinity
 	lbServices := ensureOpts.lbServices
-
+	klog.V(1).Info("params info: %+v, affinity info: %+v, lbServices info: %+v", params, affinity, lbServices)
 	var persistence *services.SessionPersistence
 	switch affinity {
 	case corev1.ServiceAffinityNone:
