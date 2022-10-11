@@ -18,7 +18,6 @@ package huaweicloud
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -171,8 +170,6 @@ func (l *LB) EnsureLoadBalancer(ctx context.Context, clusterName string, service
 	if len(nodes) == 0 {
 		return nil, fmt.Errorf("there are no available nodes for LoadBalancer service %s", serviceName)
 	}
-	serviceBytes, _ := json.Marshal(service)
-	klog.V(1).Info("===================service info: ", string(serviceBytes))
 	params, err := l.parseAnnotationParameters(service)
 	if err != nil {
 		return nil, err
@@ -710,7 +707,6 @@ func (l *LB) UpdateLoadBalancer(ctx context.Context, clusterName string, service
 // Implementations must treat the *v1.Service parameter as read-only and not modify it.
 // Parameter 'clusterName' is the name of the cluster as presented to kube-controller-manager
 func (l *LB) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, service *v1.Service) error {
-	klog.V(1).Infof("==========================================EnsureLoadBalancerDeleted start: %+v", service)
 	serviceName := fmt.Sprintf("%s/%s", service.Namespace, service.Name)
 	klog.Infof("EnsureLoadBalancerDeleted(%s, %s)", clusterName, serviceName)
 
@@ -749,7 +745,6 @@ func (l *LB) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, 
 	if err != nil {
 		return err
 	}
-	klog.V(1).Infof("==========================================EnsureLoadBalancerDeleted success")
 	return nil
 }
 
