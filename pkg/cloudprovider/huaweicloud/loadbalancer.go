@@ -218,7 +218,7 @@ func (l *LB) EnsureLoadBalancer(ctx context.Context, clusterName string, service
 
 		// add or update listener
 		listenerName := cutString(fmt.Sprintf("listener_%d_%s", portIndex, loadbalancer.Name))
-		if err = l.addOrUpdateListener(loadbalancer, listener, listenerName, port, ensureOpts); err != nil {
+		if listener, err = l.addOrUpdateListener(loadbalancer, listener, listenerName, port, ensureOpts); err != nil {
 			return nil, err
 		}
 		listenerBytes, _ = json.Marshal(listener)
@@ -543,7 +543,7 @@ func (l *LB) deletePool(lbServices services.LBService, pool *services.Pool, mErr
 }
 
 func (l *LB) addOrUpdateListener(loadbalancer *services.LoadBalancer,
-	listener *services.Listener, listenerName string, port v1.ServicePort, ensureOpts *ensureOptions) error {
+	listener *services.Listener, listenerName string, port v1.ServicePort, ensureOpts *ensureOptions) (*services.Listener, error) {
 
 	params := ensureOpts.parameters
 	lbServices := ensureOpts.lbServices
@@ -563,7 +563,7 @@ func (l *LB) addOrUpdateListener(loadbalancer *services.LoadBalancer,
 		addListener, err := lbServices.AddListener(opts)
 		listener = addListener
 		if err != nil {
-			return status.Errorf(codes.Internal, "Failed to create listener for loadbalancer %s: %v",
+			return nil, status.Errorf(codes.Internal, "Failed to create listener for loadbalancer %s: %v",
 				loadbalancer.ID, err)
 		}
 	} else {
@@ -590,12 +590,12 @@ func (l *LB) addOrUpdateListener(loadbalancer *services.LoadBalancer,
 
 		if hasChanged {
 			if err := lbServices.UpdateListener(listener.ID, updateOpts); err != nil {
-				return err
+				return nil, err
 			}
 		}
 		klog.Infof("Listener %s updated for loadbalancer %s", listener.ID, loadbalancer.ID)
 	}
-	return nil
+	return listener, nil
 }
 
 func filterListenerByPort(listenerArr []services.Listener, port v1.ServicePort) *services.Listener {
