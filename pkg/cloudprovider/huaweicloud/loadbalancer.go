@@ -210,19 +210,13 @@ func (l *LB) EnsureLoadBalancer(ctx context.Context, clusterName string, service
 	}
 
 	for portIndex, port := range ports {
-		listenerArrBytes, _ := json.Marshal(listenerArr)
-		klog.V(1).Info("===================listenerArr info: ", string(listenerArrBytes))
 		listener := filterListenerByPort(listenerArr, port)
-		listenerBytes, _ := json.Marshal(listener)
-		klog.V(1).Info("===================listener info: ", string(listenerBytes))
 
 		// add or update listener
 		listenerName := cutString(fmt.Sprintf("listener_%d_%s", portIndex, loadbalancer.Name))
 		if listener, err = l.addOrUpdateListener(loadbalancer, listener, listenerName, port, ensureOpts); err != nil {
 			return nil, err
 		}
-		listenerBytes, _ = json.Marshal(listener)
-		klog.V(1).Info("===================listener info: ", string(listenerBytes))
 		listenerArr = popListener(listenerArr, listener.ID)
 
 		// query pool or create pool
@@ -439,23 +433,17 @@ func (l *LB) getOrCreatePool(loadbalancer *services.LoadBalancer,
 
 	pool, err := ensureOpts.lbServices.GetPool(loadbalancer.ID, listener.ID)
 	if err != nil && common.IsNotFound(err) {
-		pool, err = l.createPool(poolName, loadbalancer, listener, ensureOpts)
-		poolBytes, _ := json.Marshal(pool)
-		klog.V(1).Info("get pool info: %s, err info: %+v", poolBytes, err)
+		pool, err = l.createPool(poolName, listener, ensureOpts)
 	} else if err != nil {
 		return nil, err
 	}
 	return pool, nil
 }
 
-func (l *LB) createPool(name string, loadbalancer *services.LoadBalancer, listener *services.Listener,
-	ensureOpts *ensureOptions) (*services.Pool, error) {
+func (l *LB) createPool(name string, listener *services.Listener, ensureOpts *ensureOptions) (*services.Pool, error) {
 	params := ensureOpts.parameters
 	affinity := ensureOpts.service.Spec.SessionAffinity
 	lbServices := ensureOpts.lbServices
-	paramsBytes, _ := json.Marshal(params)
-	affinityBytes, _ := json.Marshal(affinity)
-	klog.V(1).Info("params info: %s, affinity info: %s", string(paramsBytes), string(affinityBytes))
 	if len(params.lBMethod) == 0 {
 		return nil, fmt.Errorf("loadbalance method is empty")
 	}
@@ -470,15 +458,12 @@ func (l *LB) createPool(name string, loadbalancer *services.LoadBalancer, listen
 	}
 
 	opts := services.CreatePoolOpts{
-		Name:           name,
-		LoadbalancerID: loadbalancer.ID,
-		//ListenerID:     listener.ID,
+		Name:        name,
+		ListenerID:  listener.ID,
 		LBMethod:    services.LBMethod(params.lBMethod),
 		Protocol:    services.Protocol(listener.Protocol),
 		Persistence: persistence,
 	}
-	optsBytes, _ := json.Marshal(opts)
-	klog.V(1).Info("create opts info: %s", string(optsBytes))
 	return lbServices.CreatePool(opts)
 }
 
