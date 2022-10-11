@@ -448,7 +448,7 @@ func (l *LB) createPool(name string, listener *services.Listener, ensureOpts *en
 	lbServices := ensureOpts.lbServices
 	paramsBytes, _ := json.Marshal(params)
 	affinityBytes, _ := json.Marshal(affinity)
-	klog.V(1).Info("params info: %s, affinity info: %s", paramsBytes, affinityBytes)
+	klog.V(1).Info("params info: %s, affinity info: %s", string(paramsBytes), string(affinityBytes))
 	var persistence *services.SessionPersistence
 	switch affinity {
 	case corev1.ServiceAffinityNone:
@@ -466,6 +466,8 @@ func (l *LB) createPool(name string, listener *services.Listener, ensureOpts *en
 		Protocol:    services.Protocol(listener.Protocol),
 		Persistence: persistence,
 	}
+	optsBytes, _ := json.Marshal(opts)
+	klog.V(1).Info("create opts info: %s", string(optsBytes))
 	return lbServices.CreatePool(opts)
 }
 
