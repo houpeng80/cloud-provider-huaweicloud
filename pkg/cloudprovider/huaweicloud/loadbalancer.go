@@ -19,13 +19,14 @@ package huaweicloud
 import (
 	"context"
 	"fmt"
+	"strconv"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	cloudprovider "k8s.io/cloud-provider"
 	"k8s.io/klog/v2"
-	"strconv"
 
 	"sigs.k8s.io/cloud-provider-huaweicloud/pkg/cloudprovider/huaweicloud/services"
 	"sigs.k8s.io/cloud-provider-huaweicloud/pkg/common"
@@ -37,7 +38,6 @@ const (
 	ServiceAnnotationELBClass          = "kubernetes.io/elb.class"
 	ServiceAnnotationLBConnectionLimit = "kubernetes.io/connection-limit"
 	ServiceAnnotationLBEIPID           = "kubernetes.io/eip-id"
-	ServiceAnnotationLBELBID           = "kubernetes.io/elb.id"
 	ServiceAnnotationLBKeepEIP         = "kubernetes.io/keep-eip"
 	ServiceAnnotationLBNetworkID       = "kubernetes.io/network-id"
 	ServiceAnnotationLBSubnetID        = "kubernetes.io/subnet-id"
@@ -130,8 +130,8 @@ func (l *LB) getLoadBalancerInstance(ctx context.Context, clusterName string, se
 		return nil, err
 	}
 
-	elbId := getStringFromSvsAnnotation(service, ServiceAnnotationLBELBID, "")
-	loadbalancer, err := lbServices.Get(elbId)
+	name := l.GetLoadBalancerName(ctx, clusterName, service)
+	loadbalancer, err := lbServices.GetByName(name)
 	if err != nil && common.IsNotFound(err) {
 		defaultName := cloudprovider.DefaultLoadBalancerName(service)
 		loadbalancer, err = lbServices.GetByName(defaultName)
@@ -432,8 +432,7 @@ func (l *LB) getOrCreatePool(loadbalancer *services.LoadBalancer,
 
 	pool, err := ensureOpts.lbServices.GetPool(loadbalancer.ID, listener.ID)
 	if err != nil && common.IsNotFound(err) {
-		pool, err = l.createPool(poolName, listener, ensureOpts)
-		if err != nil {
+		if pool, err = l.createPool(poolName, listener, ensureOpts); err != nil {
 			return nil, err
 		}
 	} else if err != nil {
