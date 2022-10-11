@@ -210,7 +210,11 @@ func (l *LB) EnsureLoadBalancer(ctx context.Context, clusterName string, service
 	}
 
 	for portIndex, port := range ports {
+		listenerArrBytes, err := json.Marshal(listenerArr)
+		klog.V(1).Info("===================listenerArr info: ", string(listenerArrBytes))
 		listener := filterListenerByPort(listenerArr, port)
+		listenerBytes, err := json.Marshal(listener)
+		klog.V(1).Info("===================listener info: ", string(listenerBytes))
 
 		// add or update listener
 		listenerName := cutString(fmt.Sprintf("listener_%d_%s", portIndex, loadbalancer.Name))
