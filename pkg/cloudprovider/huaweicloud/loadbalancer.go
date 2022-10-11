@@ -210,10 +210,10 @@ func (l *LB) EnsureLoadBalancer(ctx context.Context, clusterName string, service
 	}
 
 	for portIndex, port := range ports {
-		listenerArrBytes, err := json.Marshal(listenerArr)
+		listenerArrBytes, _ := json.Marshal(listenerArr)
 		klog.V(1).Info("===================listenerArr info: ", string(listenerArrBytes))
 		listener := filterListenerByPort(listenerArr, port)
-		listenerBytes, err := json.Marshal(listener)
+		listenerBytes, _ := json.Marshal(listener)
 		klog.V(1).Info("===================listener info: ", string(listenerBytes))
 
 		// add or update listener
@@ -221,6 +221,8 @@ func (l *LB) EnsureLoadBalancer(ctx context.Context, clusterName string, service
 		if err = l.addOrUpdateListener(loadbalancer, listener, listenerName, port, ensureOpts); err != nil {
 			return nil, err
 		}
+		listenerBytes, _ = json.Marshal(listener)
+		klog.V(1).Info("===================listener info: ", string(listenerBytes))
 		listenerArr = popListener(listenerArr, listener.ID)
 
 		// query pool or create pool

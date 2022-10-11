@@ -288,12 +288,13 @@ func (l LBSharedService) CreatePool(opts CreatePoolOpts) (*Pool, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	persistence := pools.SessionPersistence{}
+	var persistence *pools.SessionPersistence
 	if opts.Persistence != nil {
-		persistence.Type = opts.Persistence.Type
-		persistence.CookieName = opts.Persistence.CookieName
-		persistence.PersistenceTimeout = opts.Persistence.PersistenceTimeout
+		persistence = &pools.SessionPersistence{
+			Type:               opts.Persistence.Type,
+			CookieName:         opts.Persistence.CookieName,
+			PersistenceTimeout: opts.Persistence.PersistenceTimeout,
+		}
 	}
 	createOpts := pools.CreateOpts{
 		LBMethod:       pools.LBMethod(opts.LBMethod),
@@ -301,7 +302,7 @@ func (l LBSharedService) CreatePool(opts CreatePoolOpts) (*Pool, error) {
 		LoadbalancerID: opts.LoadbalancerID,
 		ListenerID:     opts.ListenerID,
 		Name:           opts.Name,
-		Persistence:    &persistence,
+		Persistence:    persistence,
 	}
 
 	pool, err := pools.Create(client, createOpts).Extract()
