@@ -430,6 +430,7 @@ func (l *LB) getOrCreatePool(loadbalancer *services.LoadBalancer,
 	listener *services.Listener, poolName string, ensureOpts *ensureOptions) (*services.Pool, error) {
 
 	pool, err := ensureOpts.lbServices.GetPool(loadbalancer.ID, listener.ID)
+	klog.V(1).Info("get pool info: %+v, err info: %+v", pool, err)
 	if err != nil && common.IsNotFound(err) {
 		pool, err = l.createPool(poolName, listener, ensureOpts)
 	} else if err != nil {
