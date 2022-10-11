@@ -262,7 +262,7 @@ func (l *LB) getOrCreateLoadbalancer(ensureOpts *ensureOptions) (*services.LoadB
 	lbServices := ensureOpts.lbServices
 
 	loadbalancer, err := l.getLoadBalancerInstance(ensureOpts.context, clusterName, service)
-	if err != nil && common.IsNotFound(nil) {
+	if err != nil && common.IsNotFound(err) {
 		opts := &services.LBCreateOpts{
 			Name: l.GetLoadBalancerName(ensureOpts.context, clusterName, service),
 			Description: fmt.Sprintf("Kubernetes external service %s/%s from cluster %s",
