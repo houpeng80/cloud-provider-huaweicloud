@@ -121,6 +121,10 @@ func (l LBSharedService) CreateToCompleted(opts *LBCreateOpts) (*LoadBalancer, e
 		updateOpts := eips.UpdateOpts{
 			PortID: loadbalancer.VipPortID,
 		}
+		client, err = l.getVpcV1Client()
+		if err != nil {
+			return nil, err
+		}
 		r := eips.Update(client, opts.PublicIpId, updateOpts)
 		if r.Err != nil {
 			err = l.Delete(loadbalancer.ID)
@@ -285,10 +289,13 @@ func (l LBSharedService) CreatePool(opts CreatePoolOpts) (*Pool, error) {
 		return nil, err
 	}
 
-	persistence := pools.SessionPersistence{
-		Type:               opts.Persistence.Type,
-		CookieName:         opts.Persistence.CookieName,
-		PersistenceTimeout: opts.Persistence.PersistenceTimeout,
+	var persistence *pools.SessionPersistence
+	if opts.Persistence != nil {
+		persistence = &pools.SessionPersistence{
+			Type:               opts.Persistence.Type,
+			CookieName:         opts.Persistence.CookieName,
+			PersistenceTimeout: opts.Persistence.PersistenceTimeout,
+		}
 	}
 	createOpts := pools.CreateOpts{
 		LBMethod:       pools.LBMethod(opts.LBMethod),
@@ -296,7 +303,7 @@ func (l LBSharedService) CreatePool(opts CreatePoolOpts) (*Pool, error) {
 		LoadbalancerID: opts.LoadbalancerID,
 		ListenerID:     opts.ListenerID,
 		Name:           opts.Name,
-		Persistence:    &persistence,
+		Persistence:    persistence,
 	}
 
 	pool, err := pools.Create(client, createOpts).Extract()
@@ -419,6 +426,14 @@ func (l LBSharedService) getElbV2Client() (*golangsdk.ServiceClient, error) {
 	return client, nil
 }
 
+func (l LBSharedService) getVpcV1Client() (*golangsdk.ServiceClient, error) {
+	client, err := l.Config.VpcV1Client()
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("Failed create VPC V1 client: %s", err))
+	}
+	return client, nil
+}
+
 func (l LBSharedService) buildLoadBalancer(lb *loadbalancers.LoadBalancer) *LoadBalancer {
 	return &LoadBalancer{
 		ID:                  lb.ID,
@@ -443,7 +458,7 @@ func (l LBSharedService) buildLoadBalancers(arr []loadbalancers.LoadBalancer) []
 	if len(arr) == 0 {
 		return nil
 	}
-	rst := make([]LoadBalancer, 0, len(arr))
+	rst := make([]LoadBalancer, len(arr), len(arr))
 	for pos, lb := range arr {
 		instance := l.buildLoadBalancer(&lb)
 		rst[pos] = *instance
@@ -456,7 +471,7 @@ func (l LBSharedService) buildLoadBalancerID(arr []listeners.LoadBalancerID) []s
 		return nil
 	}
 
-	lbIDs := make([]string, 0, len(arr))
+	lbIDs := make([]string, len(arr), len(arr))
 	for pos, lbID := range arr {
 		lbIDs[pos] = lbID.ID
 	}
@@ -491,7 +506,7 @@ func (l LBSharedService) buildListeners(arr []listeners.Listener) []Listener {
 	if len(arr) == 0 {
 		return nil
 	}
-	rst := make([]Listener, 0, len(arr))
+	rst := make([]Listener, len(arr), len(arr))
 	for pos, listener := range arr {
 		lis := l.buildListener(&listener)
 		rst[pos] = *lis
@@ -533,7 +548,7 @@ func (l LBSharedService) buildPools(arr []pools.Pool) []Pool {
 	if len(arr) == 0 {
 		return nil
 	}
-	rst := make([]Pool, 0, len(arr))
+	rst := make([]Pool, len(arr), len(arr))
 	for pos, item := range arr {
 		rst[pos] = *(l.buildPool(&item))
 	}
@@ -561,7 +576,7 @@ func (l LBSharedService) buildMembers(arr []pools.Member) []Member {
 	if len(arr) == 0 {
 		return nil
 	}
-	rst := make([]Member, 0, len(arr))
+	rst := make([]Member, len(arr), len(arr))
 	for pos, item := range arr {
 		rst[pos] = *(l.buildMember(&item))
 	}
@@ -594,7 +609,7 @@ func (l LBSharedService) buildMonitors(arr []monitors.Monitor) []Monitor {
 	if len(arr) == 0 {
 		return nil
 	}
-	rst := make([]Monitor, 0, len(arr))
+	rst := make([]Monitor, len(arr), len(arr))
 	for pos, item := range arr {
 		rst[pos] = *(l.buildMonitor(&item))
 	}
